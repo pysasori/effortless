@@ -139,11 +139,6 @@ random_delay(min_delay=0.1, max_delay=0.5)
 from effortless import kill_process_by_window_name
 
 success = kill_process_by_window_name("notepad.exe")
-
-if success:
-    print("Процес завершено.")
-else:
-    print("Процес не знайдено.")
 ```
 
 Параметри:

@@ -1,7 +1,7 @@
 import time
 import pyautogui
 from typing import Optional
-from utils.random_delay import random_delay
+from .utils.random_delay import random_delay
 
 pyautogui.FAILSAFE = False
 
