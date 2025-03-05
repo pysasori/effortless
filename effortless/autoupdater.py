@@ -17,7 +17,6 @@
     updater.update_and_restart()
     ```
 """
-
 import subprocess
 import sys
 import os
@@ -29,11 +28,12 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 
 
 class UpdaterBase(ABC):
-    """Абстрактний клас оновлення, можна розширювати під Webhooks, API та інші методи."""
+    """Абстрактний клас оновлення, який можна розширювати під різні методи (Git, API, Webhooks тощо)."""
 
     @abstractmethod
     def check_for_updates(self) -> bool:
-        """Перевіряє наявність оновлень.
+        """
+        Перевіряє наявність оновлень.
 
         Returns:
             bool: True, якщо є оновлення, інакше False.
@@ -42,7 +42,8 @@ class UpdaterBase(ABC):
 
     @abstractmethod
     def apply_updates(self) -> bool:
-        """Застосовує оновлення.
+        """
+        Завантажує та застосовує оновлення.
 
         Returns:
             bool: True, якщо оновлення пройшло успішно, інакше False.
@@ -63,48 +64,42 @@ class GitUpdater(UpdaterBase):
         self.branch = branch
 
     def check_for_updates(self) -> bool:
-        """Перевіряє наявність оновлень у віддаленому репозиторії.
+        """
+        Перевіряє наявність оновлень.
+        У цій реалізації метод завжди повертає True, оскільки оновлення виконується одразу.
 
         Returns:
-            bool: True, якщо є оновлення, інакше False.
+            bool: Завжди True.
         """
-        try:
-            result = subprocess.run(['git', 'fetch', 'origin', self.branch], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            output = result.stdout.decode("utf-8")
-
-            if "From" in output:  # Git виводить це, якщо є зміни
-                logging.info("Доступні оновлення.")
-                return True
-            logging.info("Оновлень немає.")
-            return False
-
-        except Exception as e:
-            logging.error(f"Помилка перевірки оновлень: {e}")
-            return False
+        return True
 
     def apply_updates(self) -> bool:
-        """Застосовує оновлення з віддаленого репозиторію.
+        """
+        Виконує `git pull` для отримання останніх змін.
 
         Returns:
-            bool: True, якщо оновлення пройшло успішно, інакше False.
+            bool: True, якщо код оновлено, False, якщо оновлень не було.
         """
         try:
-            result = subprocess.run(['git', 'pull', 'origin', self.branch], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            output = result.stdout.decode("utf-8")
+            result = subprocess.run(["git", "pull", "origin", self.branch], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-            if "Already up to date." in output:
-                logging.info("Оновлень не було застосовано.")
+            if result.returncode == 0:
+                output = result.stdout
+                if "Already up to date." in output:
+                    logging.info("Оновлень немає.")
+                    return False
+                logging.info("Код успішно оновлено.")
+                return True
+            else:
+                logging.error(f"Помилка під час оновлення: {result.stderr}")
                 return False
-            logging.info("Код успішно оновлено.")
-            return True
-
         except Exception as e:
-            logging.error(f"Помилка застосування оновлень: {e}")
+            logging.error(f"Помилка виконання git pull: {e}")
             return False
 
 
 class AutoUpdater:
-    """Автоматичне оновлення з можливістю кастомних обробників."""
+    """Клас для автоматичного оновлення коду та перезапуску програми, якщо потрібно."""
 
     def __init__(
         self,
@@ -125,7 +120,10 @@ class AutoUpdater:
         self.on_update_callback = on_update_callback
 
     def update_and_restart(self) -> None:
-        """Перевіряє оновлення та застосовує їх, при необхідності перезапускає програму."""
+        """
+        Перевіряє наявність оновлень, застосовує їх
+        і перезапускає програму, якщо це налаштовано.
+        """
         if self.updater.check_for_updates():
             if self.updater.apply_updates():
                 if self.on_update_callback:
@@ -135,7 +133,12 @@ class AutoUpdater:
 
     @staticmethod
     def restart_program() -> None:
-        """Перезапуск поточного скрипта."""
+        """
+        Перезапускає поточний скрипт, використовуючи той самий інтерпретатор Python.
+        """
         logging.info("Перезапуск програми...")
         python = sys.executable
         os.execl(python, python, *sys.argv)
+
+
+
