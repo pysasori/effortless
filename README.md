@@ -6,14 +6,7 @@ Effortless — це Python-бібліотека для автоматизаці�
 
 1. Клонуйте репозиторій:
    ```bash
-   git clone [https://github.com/username/effortless.git](https://github.com/username/effortless.git)
-   cd effortless
-
-
-2. Встановіть залежності:
-   ```bash
-   pip install -r requirements.txt
-   ```
+   pip install git+https://github.com/pysasori/effortless.git 
 
 ## Використання
 

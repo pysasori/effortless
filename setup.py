@@ -2,11 +2,11 @@ from setuptools import setup, find_packages
 
 setup(
     name="effortless",
-    version="0.1.0",
+    version="0.1.1",
     author="pysasori",
     author_email="pysasori@gmail.com",
     description="A Python library for automation tasks",
-    long_description=open("README.md").read(),
+    long_description = open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
     url="https://github.com/pysasori/effortless",
     packages=find_packages(),
@@ -23,5 +23,5 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires=">=3.6",
+    python_requires=">=3.9",
 )
