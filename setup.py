@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="effortless",
-    version="0.1.1",
+    version="0.1.2",
     author="pysasori",
     author_email="pysasori@gmail.com",
     description="A Python library for automation tasks",

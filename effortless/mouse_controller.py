@@ -172,6 +172,7 @@ class MouseController:
     @staticmethod
     def move_and_click(x: Optional[int] = None, y: Optional[int] = None, t: float = 0.2) -> None:
         MouseController.move(x, y, t)
+        random_delay()
         MouseController.click()
 
     @staticmethod
