@@ -12,6 +12,7 @@
 import os
 import re
 import time
+import string
 import logging
 import numpy as np
 import cv2
@@ -231,6 +232,47 @@ class TextExtractor:
         return self.extract_text(
             cords=cords,
             allowed_chars="0123456789,",
+        )
+
+    def read_digits(self, cords: Optional[List[int]] = None, allow_separators: bool = True) -> str:
+        """Розпізнає лише цифри з відомої області екрану (без прив'язки до "ціни").
+
+        Найсуворіший з готових пресетів: з результату прибирається геть усе, що не
+        цифра (і, за бажанням, роздільник тисяч/десяткових). Корисно для дрібних
+        одноцифрових/двоцифрових полів (наприклад, колонка "Amount"), де навіть
+        випадковий сторонній символ (іконка, розпізнана як ієрогліф) зіпсує парсинг.
+
+        Args:
+            cords (Optional[List[int]]): Координати області скріншоту.
+            allow_separators (bool): Чи залишати кому/крапку (роздільники тисяч/десяткових).
+
+        Returns:
+            str: Рядок, що містить лише цифри (і роздільники, якщо allow_separators=True).
+        """
+        return self.extract_text(
+            cords=cords,
+            allowed_chars="0123456789,." if allow_separators else "0123456789",
+        )
+
+    def read_english(self, cords: Optional[List[int]] = None) -> str:
+        """Розпізнає текст з відомої області екрану, залишаючи лише латиницю, цифри
+        та базову пунктуацію.
+
+        Дефолтна модель RapidOCR — мультимовна: іконки чи артефакти зображення іноді
+        розпізнаються як китайські ієрогліфи (наприклад, "品13,984" замість "13,984" —
+        коли в кроп потрапляє іконка поруч із текстом). Цей метод відсікає все, що
+        не належить до латиниці/цифр/пунктуації, тому такі символи ніколи не
+        потраплять у результат.
+
+        Args:
+            cords (Optional[List[int]]): Координати області скріншоту.
+
+        Returns:
+            str: Розпізнаний текст, обмежений латиницею, цифрами та пунктуацією.
+        """
+        return self.extract_text(
+            cords=cords,
+            allowed_chars=string.ascii_letters + string.digits + " .,'\"-:!?%$/()",
         )
 
     def find_text(
