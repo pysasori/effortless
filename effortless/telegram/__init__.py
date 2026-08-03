@@ -1,8 +1,21 @@
-import requests
+"""
+Відправка повідомлень у Telegram.
+
+Приклад:
+    from effortless.telegram import send_message
+
+    send_message(api_token="...", chat_id=123456789, text="Hello!")
+"""
 import logging
 
+import requests
 
-def send_telegram_message(api_token: str, chat_id: int, text: str) -> None:
+logger = logging.getLogger(__name__)
+
+__all__ = ["send_message"]
+
+
+def send_message(api_token: str, chat_id: int, text: str) -> None:
     """
     Відправляє повідомлення в Telegram-чат (синхронно, без асинхронності).
 
@@ -20,6 +33,6 @@ def send_telegram_message(api_token: str, chat_id: int, text: str) -> None:
     try:
         response = requests.post(url, json=payload)
         response.raise_for_status()
-        logging.info(f"Повідомлення надіслано в Telegram: {text}")
+        logger.info(f"Повідомлення надіслано в Telegram: {text}")
     except requests.exceptions.RequestException as e:
-        logging.error(f"Помилка при відправці повідомлення в Telegram: {e}")
+        logger.error(f"Помилка при відправці повідомлення в Telegram: {e}")

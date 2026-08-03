@@ -5,8 +5,7 @@ import numpy as np
 import logging
 from typing import Optional, Tuple, List, Union
 
-# Налаштування логування
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
 
 
 class ImageSearcher:
@@ -45,7 +44,7 @@ class ImageSearcher:
             return False
 
         start_time = time.time()
-        logging.info(f"Зображення {img} почали шукати")
+        logger.info(f"Зображення {img} почали шукати")
         while True:
             screen_gray = self._take_screenshot(cords)
             result = self._find_image_on_screen(img_gray, screen_gray, cords)
@@ -55,10 +54,10 @@ class ImageSearcher:
                     self._save_screenshot(screen_gray, 'logs_screen/search_on_screen_found.png')
                 return result
 
-            if search_time and time.time() - start_time > search_time:
+            if search_time is not None and time.time() - start_time > search_time:
                 if self.save_screens:
                     self._save_screenshot(screen_gray, 'logs_screen/search_on_screen_errors.png')
-                logging.info(f"Зображення {img} не знайдено за {search_time} секунд.")
+                logger.info(f"Зображення {img} не знайдено за {search_time} секунд.")
                 return False
 
             time.sleep(0.5)
@@ -92,7 +91,7 @@ class ImageSearcher:
         """
         img_rgb = cv2.imread(img)
         if img_rgb is None:
-            logging.error(f"Зображення {img} не знайдено.")
+            logger.error(f"Зображення {img} не знайдено.")
             return None
         return cv2.cvtColor(img_rgb, cv2.COLOR_BGR2GRAY)
 
@@ -135,7 +134,7 @@ class ImageSearcher:
         if len(loc[0]) > 0:
             x = loc[1][0] + cords[0] if cords else loc[1][0]
             y = loc[0][0] + cords[1] if cords else loc[0][0]
-            logging.info(f"Зображення знайдено: координати: ({x}, {y})")
+            logger.info(f"Зображення знайдено: координати: ({x}, {y})")
             return x, y
         return None
 
@@ -148,4 +147,4 @@ class ImageSearcher:
             path (str): Шлях для збереження скріншоту.
         """
         cv2.imwrite(path, screen_gray)
-        logging.info(f"Скріншот збережено за шляхом: {path}")
+        logger.info(f"Скріншот збережено за шляхом: {path}")

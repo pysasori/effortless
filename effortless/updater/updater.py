@@ -24,7 +24,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Optional, Callable
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
 
 
 class UpdaterBase(ABC):
@@ -86,15 +86,15 @@ class GitUpdater(UpdaterBase):
             if result.returncode == 0:
                 output = result.stdout
                 if "Already up to date." in output:
-                    logging.info("Оновлень немає.")
+                    logger.info("Оновлень немає.")
                     return False
-                logging.info("Код успішно оновлено.")
+                logger.info("Код успішно оновлено.")
                 return True
             else:
-                logging.error(f"Помилка під час оновлення: {result.stderr}")
+                logger.error(f"Помилка під час оновлення: {result.stderr}")
                 return False
         except Exception as e:
-            logging.error(f"Помилка виконання git pull: {e}")
+            logger.error(f"Помилка виконання git pull: {e}")
             return False
 
 
@@ -136,7 +136,7 @@ class AutoUpdater:
         """
         Перезапускає поточний скрипт, використовуючи той самий інтерпретатор Python.
         """
-        logging.info("Перезапуск програми...")
+        logger.info("Перезапуск програми...")
         python = sys.executable
         os.execl(python, python, *sys.argv)
 

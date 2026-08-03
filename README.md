@@ -1,95 +1,243 @@
 # Effortless
 
-Effortless — це Python-бібліотека для автоматизації різних завдань, таких як робота з мишею, пошук зображень на екрані, відправка повідомлень у Telegram, автоматичне оновлення коду та інше. Бібліотека спрощує виконання рутинних завдань і дозволяє зосередитися на головному.
+Python-бібліотека для автоматизації рутинних задач на Windows: рух миші, що
+імітує людину, пошук зображень і тексту на екрані (OCR), сповіщення в Telegram,
+автооновлення коду через Git.
 
-## Встановлення
+Кожен домен — окремий підмодуль (`effortless.mouse`, `effortless.ocr`, ...),
+який імпортується явно і не тягне за собою залежності інших модулів. Голий
+`import effortless` не завантажує ні `pyautogui`, ні `opencv`, ні `RapidOCR` —
+лише те, що реально імпортовано.
 
-1. Клонуйте репозиторій:
-   ```bash
-   pip install git+https://github.com/pysasori/effortless.git 
-
-## Використання
-
-### Відправка повідомлень у Telegram
-
-Функція `send_telegram_message` відправляє повідомлення в Telegram-чат.
-
-```python
-from effortless import send_telegram_message
-
-send_telegram_message(
-    api_token="your_telegram_bot_token",
-    chat_id=123456789,
-    text="Hello, this is a test message!"
-)
+```bash
+pip install git+https://github.com/pysasori/effortless.git
 ```
 
-Параметри:
+## Зміст
 
-*   `api_token` (str): Токен вашого Telegram-бота.
-*   `chat_id` (int): ID чату, куди відправити повідомлення.
-*   `text` (str): Текст повідомлення.
+| Модуль | Що робить | Ключова перевага |
+|---|---|---|
+| `effortless.mouse` | Рух курсора, кліки, скрол | Траєкторія за алгоритмом WindMouse — не пряма лінія, як у більшості ботів |
+| `effortless.vision` | Пошук картинки на екрані (OpenCV) | Очікування з таймаутом замість `sleep()` навмання |
+| `effortless.ocr` | Розпізнавання тексту (RapidOCR) | Немає зовнішнього бінарника (був Tesseract) + два готові сценарії: читання і пошук |
+| `effortless.updater` | Автооновлення коду через Git | Опційний рестарт процесу після оновлення |
+| `effortless.telegram` | Надсилання повідомлень у Telegram | — |
+| `effortless.utils` | Випадкові затримки, завершення процесів | Спільні для інших модулів утиліти |
 
-### Робота з мишею
-
-Клас `MouseController` дозволяє керувати мишею: переміщувати курсор, робити кліки, прокручувати сторінку тощо.
+Розділи нижче йдуть у тому самому порядку.
 
 ```python
-from effortless import MouseController
-
-# Переміщення курсора
-MouseController.move(x=100, y=200)
-
-# Клік за координатами
-MouseController.click(x=150, y=250)
-
-# Довгий клік
-MouseController.long_click(t=0.5)
-
-# Прокрутка сторінки
-MouseController.scroll(px=100)
+import effortless.mouse as mouse
+from effortless.ocr import TextExtractor
+from effortless.vision import ImageSearcher
+from effortless.updater import AutoUpdater, GitUpdater
+from effortless.telegram import send_message
+from effortless.utils import random_delay, kill_process_by_window_name
 ```
 
-Основні методи:
+---
 
-*   `move(x, y, t)`: Переміщує курсор до координат `(x, y)` з затримкою `t`.
-*   `click(x, y)`: Робить клік за координатами `(x, y)`.
-*   `long_click(t)`: Довгий клік на поточній позиції з тривалістю `t`.
-*   `scroll(px)`: Прокручує сторінку на `px` пікселів.
+## 🖱️ `effortless.mouse` — рух миші, що імітує людину
 
-### Пошук зображень на екрані
-
-Клас `ImageSearcher` дозволяє шукати зображення на екрані за допомогою OpenCV.
+Прості функції (без класу — тримати стан миші не треба):
 
 ```python
-from effortless import ImageSearcher
+import effortless.mouse as mouse
 
-searcher = ImageSearcher()
-result = searcher.search_image("template.png", cords=[100, 100, 500, 500])
-
-if result:
-    print(f"Зображення знайдено: {result}")
-else:
-    print("Зображення не знайдено.")
+mouse.move(x=100, y=200)          # переміщення
+mouse.click(x=150, y=250)         # клік за координатами
+mouse.move_and_click(x=300, y=400)
+mouse.drag(x=500, y=500)          # затиснути -> перевести -> відпустити
+mouse.long_click(t=0.5)           # довгий клік на поточній позиції
+mouse.scroll(px=100)              # прокрутка
 ```
 
-Параметри:
+**Чому це не просто `pyautogui.moveTo()`:** переміщення курсора йде за
+алгоритмом **WindMouse** — фізична модель з "вітром" і "гравітацією", яка на
+кожному кроці трохи зносить курсор убік і виправляє напрямок, замість руху
+по прямій. Пряма лінія від точки А до точки Б за постійну швидкість — це
+якраз те, що видає бота; WindMouse дає траєкторію з дрібними випадковими
+відхиленнями, схожу на рух живої руки. Кожен виклик (`move`, `click`, `drag`)
+додатково завершується випадковою паузою (`random_delay`, модуль `utils`),
+щоб інтервали між діями не були ідеально однаковими.
 
-*   `template` (str): Шлях до зображення, яке потрібно знайти.
-*   `cords` (list): Координати області пошуку `[x1, y1, x2, y2]`. Якщо `None`, пошук на всьому екрані.
-*   `search_time` (float): Час пошуку в секундах. Якщо `None`, пошук відбувається один раз.
+Рух виконується напряму через WinAPI `SendInput` (низькорівнева обгортка —
+`effortless.mouse.win_api`), а не через емуляцію на рівні застосунку.
 
-Методи:
+| Функція | Що робить |
+|---|---|
+| `move(x, y)` | Переміщує курсор в абсолютні координати |
+| `move_from_point(x, y)` | Переміщує курсор відносно поточної позиції |
+| `move_and_click(x, y)` | Переміщення + клік |
+| `click(x, y)` | Клік лівою кнопкою (за бажанням — з попереднім переміщенням) |
+| `long_click(t)` | Затискає ліву кнопку на `t` секунд |
+| `drag(x, y, button)` | Затискає кнопку, переводить курсор, відпускає |
+| `scroll(px)` | Прокрутка на `px` пікселів |
 
-*   `search_image(template, cords, search_time)`: Шукає зображення на екрані.
-*   `checking_image(template, cords)`: Шукає зображення один раз (без очікування).
+---
 
-### Автоматичне оновлення коду
-
-Клас `AutoUpdater` дозволяє автоматично перевіряти та застосовувати оновлення коду через Git.
+## 👁️ `effortless.vision` — пошук зображень на екрані
 
 ```python
-from effortless import AutoUpdater, GitUpdater
+from effortless.vision import ImageSearcher
+
+searcher = ImageSearcher(threshold=0.87)
+
+# Чекає до 15с, поки зображення не з'явиться на екрані
+pos = searcher.search_image("template.png", cords=[100, 100, 500, 500], search_time=15)
+
+# Перевіряє один раз, без очікування
+pos = searcher.checking_image("template.png")
+
+if pos:
+    x, y = pos
+```
+
+Пошук через `cv2.matchTemplate` (шаблонне співставлення). **Перевага
+`search_image` над звичайним `sleep(N)` перед перевіркою:** цикл опитування
+з таймаутом сам зупиняється щойно зображення з'явилось на екрані, замість
+того, щоб завжди чекати фіксований час — швидше в середньому і надійніше
+при нестабільному фреймрейті/лагах застосунку.
+
+| Метод | Поведінка |
+|---|---|
+| `search_image(img, cords, search_time)` | Опитує екран кожні 0.5с, поки не знайде або не мине `search_time` (у секундах; `None` — чекати без обмеження) |
+| `checking_image(img, cords)` | Один виклик `search_image(..., search_time=0)` — без очікування |
+
+---
+
+## 📝 `effortless.ocr` — розпізнавання тексту на екрані
+
+### Було Tesseract, стало RapidOCR
+
+| | Tesseract (`pytesseract`, було) | RapidOCR (стало) |
+|---|---|---|
+| Рушій | Зовнішній бінарник `tesseract.exe`, шлях зашитий у код | ONNX Runtime, чистий Python, той самий процес |
+| Встановлення | Окремий інсталятор бінарника на кожній машині | `pip install` і все — модель уже в пакеті |
+| RAM (стабільно) | ~45 MB | ~137 MB (моделі завантажені в пам'ять один раз) |
+| Час на виклик (обрізана область) | ~140 ms | ~16-18 ms |
+
+RapidOCR важчий по базовій пам'яті (тримає завантажені ONNX-моделі), але
+на порядок швидший за виклик і не залежить від зовнішнього інсталятора —
+для бота, який регулярно читає значення з екрана, це вигідний обмін.
+
+### Два сценарії — і чому в них різні дефолти
+
+Клас `TextExtractor` вирішує дві принципово різні задачі, тому вони не діляться
+одним набором параметрів:
+
+1. **Читання відомої області** — `extract_text`, `read_text`, `scan_prices`.
+   Ти сам задаєш `cords` для конкретного значення (ціна, лічильник, стамина).
+   Позиція тексту вже відома (це весь кроп), тому пошук блоків тексту
+   (детекція) вимкнено за замовчуванням — це і дає прискорення в рази.
+
+   ```python
+   from effortless.ocr import TextExtractor
+
+   extractor = TextExtractor()
+
+   text = extractor.extract_text(cords=[100, 100, 500, 200])
+   value = extractor.read_text(cords=[100, 100, 500, 200])     # цифри + K/M/k/m
+   price = extractor.scan_prices(cords=[100, 100, 500, 200])   # цифри + кома
+   ```
+
+2. **Пошук тексту в невідомому місці** — `find_text`, `wait_for_text`,
+   `checking_text`. Ти не знаєш заздалегідь координати (кнопка "Play Now",
+   повідомлення про помилку) — детекція тексту вмикається завжди, і метод
+   повертає координати центру знайденого тексту, а не сам рядок. Побудовано
+   за тим самим паттерном очікування з таймаутом, що й `ImageSearcher`:
+
+   ```python
+   pos = extractor.find_text("Play Now")                  # один раз, без очікування
+   pos = extractor.wait_for_text("Level Complete", search_time=10)  # з таймаутом
+   pos = extractor.checking_text("Error")                  # аліас wait_for_text(search_time=0)
+
+   if pos:
+       x, y = pos
+   ```
+
+### Параметри
+
+`TextExtractor(...)`:
+
+| Параметр | За замовчуванням | Призначення |
+|---|---|---|
+| `save_images` | `False` | Зберігати оброблені зображення на диск |
+| `save_images_path` | `'logs_screen'` | Папка для збереження |
+| `text_score` | `0.5` | Мінімальний поріг впевненості розпізнавання |
+| `ocr_params` | `None` | Передається напряму в `RapidOCR(params=...)` — див. "Інша мова розпізнавання" нижче |
+
+`extract_text(...)` (і успадковано `read_text`/`scan_prices`):
+
+| Параметр | За замовчуванням | Призначення |
+|---|---|---|
+| `allowed_chars` | `None` | Якщо задано — з результату прибираються всі символи поза цим набором |
+| `detect` | `False` | Вмикає пошук блоків тексту (потрібно лише для кількох рядків/блоків в одній області) |
+| `enhance` | `False` | Апскейл + CLAHE перед розпізнаванням (для складних, шумних скріншотів) |
+
+`find_text`/`wait_for_text`/`checking_text`:
+
+| Параметр | За замовчуванням | Призначення |
+|---|---|---|
+| `target` | — | Текст, який шукаємо (підрядок) |
+| `case_sensitive` | `False` | Порівнювати з урахуванням регістру |
+| `search_time` (лише `wait_for_text`) | `15` | Секунди очікування; `0` — один раз, `None` — без обмеження |
+
+Повертають `(x, y)` координати центру знайденого тексту або `False` — той
+самий контракт, що й у `ImageSearcher.search_image`/`checking_image`.
+
+### Інша мова розпізнавання
+
+Дефолтна модель (PP-OCRv6) вже мультимовна і розпізнає латиницю/цифри без
+додаткових налаштувань — саме тому `read_text`/`scan_prices` не мають
+окремого параметра мови. Якщо все ж потрібна конкретна мовна модель
+(наприклад, окрема кирилична), її можна підключити через `ocr_params`:
+
+```python
+extractor = TextExtractor(ocr_params={
+    "Rec.lang_type": "cyrillic",
+    "Rec.ocr_version": "PP-OCRv5",
+})
+```
+
+⚠️ Будь-яка мовна модель, відмінна від дефолтної PP-OCRv6, **не входить у
+пакет** і довантажується з ModelScope (Китай) при першому створенні
+`TextExtractor()` — це мережевий виклик, якого немає в поведінці за
+замовчуванням.
+
+### Продуктивність: що саме оптимізовано
+
+Оптимізація в порядку впливу — з наївного RapidOCR (детекція на кожен виклик,
+~600-670 MB RAM, ~600 ms/виклик) до поточного стану (~137-140 MB, ~16-18 ms):
+
+1. **`detect=False` за замовчуванням.** `cords` вже задає обрізану область
+   екрану — детекція "де на зображенні текст" зайва, коли весь кроп і так
+   є текстом. Основний виграш: ~5x менше пам'яті, ~35x швидше на виклик.
+2. **`enhance=False` за замовчуванням.** Апскейл + grayscale + CLAHE були
+   підібрані під Tesseract (класичний алгоритм, якому потрібен контрастний
+   бінаризований вхід). RapidOCR — нейромережа з власною нормалізацією
+   розміру всередині rec-моделі; тест на різних розмірах шрифту показав
+   однакову або трохи кращу точність без цієї обробки, і ~25x дешевше по
+   CPU на сам препроцесинг (1.29ms → 0.05ms на виклик).
+3. **Перевірено й відхилено:** обмеження потоків ONNX Runtime
+   (`intra_op_num_threads=1`) — дає ледь помітну економію пам'яті (~4 MB),
+   але вдвічі уповільнює кожен виклик (17ms → 34ms). Не застосовано.
+
+**Стеля ~137 MB.** З них ~30 MB — фіксований податок самого `onnxruntime`,
+~90 MB — три завантажені ONNX-моделі (`det`, `rec`, `cls`). RapidOCR завжди
+завантажує всі три моделі при створенні, навіть якщо `detect=False` і
+`det`/`cls` реально не використовуються — публічний API не дає це пропустити.
+Обійти можна лише через приватні внутрішні класи RapidOCR (в обхід
+документованого API) заради ще ~25-30 MB — свідомо не зроблено: це прив'язало
+б код до внутрішньої структури чужої бібліотеки, яка може змінитись без
+попередження в наступній версії.
+
+---
+
+## 🔄 `effortless.updater` — автооновлення коду
+
+```python
+from effortless.updater import AutoUpdater, GitUpdater
 
 def after_update():
     print("Оновлення завершено!")
@@ -97,52 +245,58 @@ def after_update():
 updater = AutoUpdater(
     updater=GitUpdater(branch="main"),
     restart_on_update=True,
-    on_update_callback=after_update
+    on_update_callback=after_update,
 )
-
 updater.update_and_restart()
 ```
 
-Параметри:
+`GitUpdater` викликає `git pull`; `AutoUpdater` — тонкий шар зверху, який
+опційно перезапускає процес тим самим інтерпретатором Python після успішного
+оновлення. `UpdaterBase` — абстрактний клас, можна підключити інший спосіб
+оновлення (API, вебхук) замість Git.
 
-*   `updater` (`UpdaterBase`): Екземпляр класу для оновлення (наприклад, `GitUpdater`).
-*   `restart_on_update` (bool): Чи потрібно перезапускати програму після оновлення.
-*   `on_update_callback` (`Callable`): Функція, яка викликається після успішного оновлення.
+| Параметр | Призначення |
+|---|---|
+| `updater` | Екземпляр `UpdaterBase` (наприклад, `GitUpdater`) |
+| `restart_on_update` | Чи перезапускати процес після оновлення |
+| `on_update_callback` | Функція, яка викликається після успішного оновлення |
 
-### Генерація випадкової затримки
+---
 
-Функція `random_delay` дозволяє створювати випадкові затримки для імітації людської взаємодії.
-
-```python
-from effortless import random_delay
-
-random_delay(min_delay=0.1, max_delay=0.5)
-```
-
-Параметри:
-
-*   `min_delay` (float): Мінімальна затримка у секундах.
-*   `max_delay` (float): Максимальна затримка у секундах.
-
-### Завершення процесу за іменем вікна
-
-Функція `kill_process_by_window_name` завершує процес за іменем його вікна.
+## 📨 `effortless.telegram` — сповіщення
 
 ```python
-from effortless import kill_process_by_window_name
+from effortless.telegram import send_message
 
-success = kill_process_by_window_name("notepad.exe")
+send_message(
+    api_token="your_telegram_bot_token",
+    chat_id=123456789,
+    text="Hello, this is a test message!",
+)
 ```
 
-Параметри:
+Синхронний POST-запит до Telegram Bot API, без залежностей від async-стеку.
 
-*   `window_name` (str): Ім'я вікна процесу.
+---
+
+## 🛠️ `effortless.utils` — допоміжні функції
+
+```python
+from effortless.utils import random_delay, kill_process_by_window_name
+
+random_delay(min_delay=0.1, max_delay=0.5)   # випадкова пауза для імітації людини
+kill_process_by_window_name("notepad.exe")   # завершити процес за іменем вікна
+```
+
+`random_delay` використовується всередині `effortless.mouse` між діями —
+той самий механізм доступний і напряму, якщо потрібна пауза деінде в коді бота.
+
+---
 
 ## Ліцензія
 
-Цей проект ліцензовано за MIT License. Див. `LICENSE` для деталей.
+MIT — див. `LICENSE`.
 
 ## Автор
 
 pysasori – pysasori@gmail.com
-```

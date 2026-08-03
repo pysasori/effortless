@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="effortless",
-    version="0.1.2",
+    version="0.4.0",
     author="pysasori",
     author_email="pysasori@gmail.com",
     description="A Python library for automation tasks",
@@ -15,7 +15,8 @@ setup(
         "pyautogui>=0.9.53",
         "opencv-python>=4.5.5",
         "numpy>=1.21.0",
-        "pytesseract>=0.3.8",
+        "rapidocr>=2.0.0",
+        "onnxruntime>=1.16.0",
         "psutil>=5.8.0",
     ],
     classifiers=[
