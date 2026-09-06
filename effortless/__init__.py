@@ -3,6 +3,7 @@ Effortless — це Python-бібліотека для автоматизаці�
 
 Кожен домен — окремий підмодуль, який імпортується явно:
     import effortless.mouse as mouse
+    import effortless.keyboard as keyboard
     from effortless.ocr import TextExtractor
     from effortless.vision import ImageSearcher
     from effortless.updater import AutoUpdater, GitUpdater
@@ -14,4 +15,4 @@ Effortless — це Python-бібліотека для автоматизаці�
 за це, якщо потрібна лише миша.
 """
 
-__version__ = "0.4.0"
+__version__ = "0.6.0"
